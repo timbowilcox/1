@@ -20,6 +20,7 @@ class AIGenerationService {
       model: Model;
       style: StylePreset;
     },
+    owner: string,
   ) {
     const { model, style, paths } = zodParseOrThrow(RestyleSchema, input);
     const jobIds: string[] = [];
@@ -30,7 +31,7 @@ class AIGenerationService {
     );
 
     for (const path of paths) {
-      const jobId = await jobService.createJob({ path, model, style });
+      const jobId = await jobService.createJob({ path, model, style }, owner);
       jobIds.push(jobId);
 
       setImmediate(async () => {

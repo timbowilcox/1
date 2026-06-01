@@ -42,13 +42,14 @@ async function storeSetWithTtl(key: string, value: string, ttl: number): Promise
 }
 
 class JobService {
-  async createJob(input: unknown): Promise<string> {
+  async createJob(input: unknown, owner?: string): Promise<string> {
     const id = uuidv4();
     const now = new Date().toISOString();
 
     const job: Job = {
       id,
       status: "pending",
+      owner,
       input,
       createdAt: now,
       updatedAt: now,

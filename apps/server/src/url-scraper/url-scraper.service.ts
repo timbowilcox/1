@@ -1,24 +1,22 @@
 import { load } from "cheerio";
 import { isImageUrl } from "../utils/isImageUrl.util.js";
 import { NotFoundError } from "../errors/apiErrors.js";
+import { safeFetchText } from "../lib/net-guard.js";
 
 class URLScraperService {
   async scrapeUrl(url: string) {
     // if the user provided a direct image URL.
     if (await isImageUrl(url)) return [url];
 
-    const res = await fetch(url, {
+    // SSRF-guarded fetch (scheme/host validation, redirect re-validation,
+    // timeout, size cap) — the page URL is fully user-controlled.
+    const { text: html } = await safeFetchText(url, {
       headers: {
         "user-agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36",
       },
     });
 
-    if (!res.ok) {
-      throw new Error(`Failed to fetch page: ${res.status}`);
-    }
-
-    const html = await res.text();
     const $ = load(html);
 
     const ogImage = $('meta[property="og:image"]').attr("content");
@@ -31,7 +29,9 @@ class URLScraperService {
     $("img").each((_, el) => {
       const src = $(el).attr("src") || $(el).attr("data-src");
 
-      if (src && src.startsWith("http")) {
+      // Only return absolute http(s) candidates; each is re-validated by the
+      // SSRF guard again when the client uploads it via /upload-by-urls.
+      if (src && /^https?:\/\//i.test(src)) {
         images.push(src);
       }
     });
@@ -43,41 +43,6 @@ class URLScraperService {
     }
 
     return unique.slice(0, 10); // lightweight
-  }
-
-  async scrapeUrl_(url: string) {
-    // if the user provided a direct image URL.
-    if (await isImageUrl(url)) return url;
-
-    const res = await fetch(url, {
-      headers: {
-        "user-agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to fetch page: ${res.status}`);
-    }
-
-    const html = await res.text();
-    const $ = load(html);
-
-    const ogImage = $('meta[property="og:image"]').attr("content");
-
-    if (ogImage) return ogImage;
-
-    // fallback: first big <img>
-    const imgSrc = $("img")
-      .map((_, el) => $(el).attr("src") || $(el).attr("data-src"))
-      .get()
-      .find((src) => src && src.startsWith("http"));
-
-    if (!imgSrc) {
-      throw new NotFoundError("Image not found");
-    }
-
-    return imgSrc;
   }
 }
 

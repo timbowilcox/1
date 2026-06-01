@@ -17,7 +17,19 @@ const envSchema = z.object({
     .optional()
     .default("false")
     .transform((val) => val.toLowerCase() === "true"),
-  SESSION_SECRET: z.string().default("secret_key"),
+  SESSION_SECRET: z
+    .string()
+    .min(1, "SESSION_SECRET is required")
+    .refine(
+      (v) =>
+        process.env.NODE_ENV !== "production" ||
+        (v.length >= 32 && v !== "secret_key"),
+      "SESSION_SECRET must be a strong secret (>= 32 chars) in production",
+    ),
+  // Number of trusted proxy hops in front of the app (PaaS load balancers).
+  // Required for correct req.ip (rate limiting, guest identity) and secure
+  // cookies behind TLS termination.
+  TRUST_PROXY: z.coerce.number().default(1),
   DATABASE_URL: z.string(),
   CLIENT_URL: z.url(),
 

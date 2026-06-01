@@ -1,6 +1,9 @@
 import express from "express";
 import session from "express-session";
 import cors from "cors";
+import helmet from "helmet";
+import { globalLimiter } from "./middlewares/rateLimiters.js";
+import { originCheck } from "./middlewares/originCheck.js";
 import urlScraperRouter from "./url-scraper/url-scraper.router.js";
 import { errorMiddleware } from "./middlewares/errorMiddleware.js";
 import billingRouter from "./billing/billing.router.js";
@@ -20,19 +23,28 @@ import quotaRouter from "./quota/quota.router.js";
 (async () => {
   const PORT = environment.PORT;
   const app = express();
+
+  // Trust the PaaS proxy so req.ip (rate limiting, guest identity) and secure
+  // cookies behave correctly behind TLS termination.
+  app.set("trust proxy", environment.TRUST_PROXY);
+
   const store = await initRedisStore(); // connect Redis or fallback
   await stylesService.loadPrompts(); // load and save prompts
 
+  // Stripe webhook needs the raw body and carries no browser Origin — mount it
+  // before json parsing, helmet, cors and the origin/CSRF check.
   app.use("/webhooks", webhooksRouter);
 
-  app.use(express.json());
+  app.use(helmet());
 
   app.use(
     cors({
-      origin: "http://localhost:3000",
+      origin: environment.CLIENT_URL,
       credentials: true,
     }),
   );
+
+  app.use(express.json({ limit: "1mb" }));
 
   app.use(
     session({
@@ -48,6 +60,10 @@ import quotaRouter from "./quota/quota.router.js";
       },
     }),
   );
+
+  // Broad rate-limit backstop + CSRF origin check on state-changing requests.
+  app.use(globalLimiter);
+  app.use(originCheck);
 
   app.get("/", (_req, res) => {
     res.send("Hello from server");

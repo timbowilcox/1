@@ -5,23 +5,31 @@ import type { UserDTO } from "../users/users.dto.js";
 import { BadRequestError } from "../errors/apiErrors.js";
 import { imagesService } from "../images/images.service.js";
 import type { RequestIdentity } from "../types/index.js";
+import { ownerKey } from "../middlewares/ownerKey.js";
+import { assertCanAccessPaths } from "../middlewares/pathOwnership.js";
 
 class AIGenerationController {
   restyle = async (req: Request, res: Response) => {
     const user = (req as any).user as UserDTO | undefined;
-    const forwardedFor = req.headers["x-forwarded-for"];
-    
-    const ipString = Array.isArray(forwardedFor) 
-      ? forwardedFor[0] 
-      : forwardedFor?.split(",")[0];
 
-    const ip: string = ipString || req.socket.remoteAddress || "unknown_ip";
+    // Only restyle inputs the caller actually owns (session-owned uploads or
+    // their own project images) — prevents restyling someone else's image.
+    const paths = Array.isArray(req.body?.paths)
+      ? (req.body.paths as string[])
+      : [];
+    if (paths.length > 0) {
+      await assertCanAccessPaths(req, paths);
+    }
 
     const identity: RequestIdentity = user
       ? { type: "user", id: user.id }
-      : { type: "guest", id: ip };
+      : { type: "guest", id: req.ip ?? "unknown_ip" };
 
-    const result = await aiGenerationService.restyle(identity, req.body);
+    const result = await aiGenerationService.restyle(
+      identity,
+      req.body,
+      ownerKey(req),
+    );
     res.json(result);
   };
 
@@ -30,7 +38,10 @@ class AIGenerationController {
     if (!jobId) throw new BadRequestError("Job Id is required");
 
     const job = await jobService.getJob(jobId);
-    if (!job) return res.status(404).json({ message: "Job not found" });
+    // Don't reveal existence of jobs the caller doesn't own.
+    if (!job || job.owner !== ownerKey(req)) {
+      return res.status(404).json({ message: "Job not found" });
+    }
 
     res.json(job);
   };
@@ -42,9 +53,15 @@ class AIGenerationController {
     if (!jobIds && !ids) throw new BadRequestError("Jobs Ids is required");
 
     const normalizedIds = ids ? ids.split(",") : jobIds;
+    const requester = ownerKey(req);
 
-    const results = await Promise.all(
+    const fetched = await Promise.all(
       normalizedIds.map((job) => jobService.getJob(job)),
+    );
+
+    // Null out any job the requester doesn't own BEFORE signing any URLs.
+    const results = fetched.map((j) =>
+      j && j.owner === requester ? j : null,
     );
 
     if (createSignedUrls) {
