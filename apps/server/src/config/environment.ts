@@ -32,6 +32,9 @@ const envSchema = z.object({
   TRUST_PROXY: z.coerce.number().default(1),
   DATABASE_URL: z.string(),
   CLIENT_URL: z.url(),
+  // Optional: share the session cookie across subdomains of one root domain
+  // (e.g. ".yourdomain.com" for app.* + api.*). Unset = host-only cookie.
+  COOKIE_DOMAIN: z.string().optional(),
 
   PLAN_LIMIT_FREE: z.coerce.number().min(0),
   PLAN_LIMIT_PRO: z.coerce.number().min(0),

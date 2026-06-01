@@ -56,6 +56,7 @@ import quotaRouter from "./quota/quota.router.js";
         secure: environment.NODE_ENV === "production",
         httpOnly: true,
         sameSite: "lax",
+        domain: environment.COOKIE_DOMAIN,
         maxAge: 7 * 24 * 60 * 60 * 1000,
       },
     }),
