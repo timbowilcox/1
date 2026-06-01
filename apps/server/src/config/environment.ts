@@ -51,7 +51,7 @@ const envSchema = z.object({
   // Error tracking (optional). No-op if unset.
   SENTRY_DSN: z.string().optional(),
 
-  PLAN_LIMIT_FREE: z.coerce.number().min(0),
+  PLAN_LIMIT_FREE: z.coerce.number().min(0).default(3),
   PLAN_LIMIT_PRO: z.coerce.number().min(0),
   PLAN_LIMIT_PRO_PLUS: z.coerce.number().min(0),
   // Rolling free-quota window (renewed lazily on expiry). Must be a real
@@ -64,13 +64,16 @@ const envSchema = z.object({
     }),
 
   GEMINI_API_KEY: z.string(),
-  OPENAI_API_KEY: z.string(),
-  SD_API_KEY: z.string(),
+  // Optional — only needed if that provider's model is actually used.
+  OPENAI_API_KEY: z.string().optional(),
+  SD_API_KEY: z.string().optional(),
 
   GEMINI_MODEL: z.string(),
 
   STRIPE_SECRET_KEY: z.string(),
-  STRIPE_WEBHOOK_SECRET: z.string(),
+  // Optional at boot (set after creating the webhook endpoint, which needs the
+  // deployed API URL). Webhook delivery fails closed until it's set.
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_PRICE_ID_PRO: z.string(),
   STRIPE_PRICE_ID_PRO_PLUS: z.string(),
   STRIPE_PORTAL_CONFIGURATION: z.string().optional(),

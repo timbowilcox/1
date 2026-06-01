@@ -3,9 +3,19 @@ import type { ImageGenerationProviderI } from "../interfaces/imageGenerationProv
 import { environment } from "../config/environment.js";
 
 class OpenaiProvider implements ImageGenerationProviderI {
-  private openai = new OpenAI({
-    apiKey: environment.OPENAI_API_KEY,
-  });
+  private client: OpenAI | null = null;
+
+  // Lazy init: an unset OPENAI_API_KEY must not crash the app at boot — it only
+  // matters if the OpenAI model is actually selected.
+  private getClient(): OpenAI {
+    if (!this.client) {
+      if (!environment.OPENAI_API_KEY) {
+        throw new Error("OPENAI_API_KEY is not configured");
+      }
+      this.client = new OpenAI({ apiKey: environment.OPENAI_API_KEY });
+    }
+    return this.client;
+  }
 
   async generateImage({
     buffer,
@@ -20,7 +30,7 @@ class OpenaiProvider implements ImageGenerationProviderI {
   }) {
     const file = new File([buffer], "input.png", { type: mimeType });
 
-    const result = await this.openai.images.edit(
+    const result = await this.getClient().images.edit(
       {
         model: "gpt-image-1",
         image: file,

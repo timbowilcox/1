@@ -15,6 +15,11 @@ const PAID_STATUSES = new Set<SubscriptionStatus>(["ACTIVE", "TRIALING", "PAST_D
 
 class BillingWebhooks {
   async webhookHandler(payload: string | Buffer, header: string | string[]) {
+    if (!environment.STRIPE_WEBHOOK_SECRET) {
+      // Fail closed until the webhook secret is configured.
+      throw new BadRequestError("Stripe webhook is not configured");
+    }
+
     let event: Stripe.Event;
     try {
       event = stripe.webhooks.constructEvent(
