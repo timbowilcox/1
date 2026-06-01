@@ -101,5 +101,36 @@ confirm the target project first.)
 
 ## CI
 
-`.github/workflows/ci.yml` runs build + typecheck + lint on every PR. Add
-`prisma migrate deploy` to the release pipeline (not CI) once `DIRECT_URL` is set.
+`.github/workflows/ci.yml` runs build + typecheck + lint + server tests on every
+PR. Add `prisma migrate deploy` to the release pipeline (not CI) once
+`DIRECT_URL` is set.
+
+---
+
+## Background jobs & durability (the one remaining upgrade — needs Redis)
+
+**Current state (works):** restyle jobs are created and their state stored in
+Redis (mandatory in production — `lib/redis.ts` fails fast if Redis is down).
+Processing runs in-process via `setImmediate` in `ai-generation.service.ts` with:
+quota reserved up front, one automatic retry, per-provider 120s timeouts, and a
+quota refund + `failed_final` state on terminal failure. The client polls
+owner-scoped job records. This is fine for an initial launch at low–moderate
+volume on a single instance.
+
+**Known gap:** a hard process crash *between* quota reservation and job
+completion leaves the job stuck `pending` (it TTLs out after 24h) and the
+reserved quota unrefunded. There is also no cross-instance worker or backpressure
+beyond the 5-images-per-request multer cap.
+
+**Planned upgrade (BullMQ — do once Redis is connected so it can be verified):**
+1. Add a `restyle` BullMQ queue + Worker on the existing ioredis connection
+   (`bullmq` + `ioredis`, already a dependency).
+2. Move the `restyleByProvider` → upload logic into the Worker processor;
+   configure `attempts` + exponential backoff + bounded `concurrency`.
+3. Reimplement `job.service.ts` as an adapter mapping BullMQ job state →
+   the existing client job shape (`{ status, owner, input, result, error }`),
+   keeping the owner key in `job.data` for the ownership check.
+4. Refund quota in the Worker `failed` handler when attempts are exhausted; rely
+   on BullMQ stalled-job recovery to re-run jobs orphaned by a crash.
+This removes the stuck-job / unrefunded-quota gap and enables a dedicated worker
+process. Deferred here only because it must be exercised against a real Redis.
