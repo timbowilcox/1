@@ -52,6 +52,50 @@ class UsersService {
       data: { avatarUrl: avatarPath },
     });
   }
+
+  // GDPR account deletion: remove the user's stored images, then the DB row
+  // (cascade removes projects, images, collections, subscriptions, usage, tokens).
+  async deleteAccount(userId: string): Promise<void> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        avatarUrl: true,
+        projects: {
+          select: {
+            originalImages: {
+              select: {
+                originalPath: true,
+                styledImages: { select: { restyledPath: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!user) return;
+
+    const paths: string[] = [];
+    for (const project of user.projects) {
+      for (const img of project.originalImages) {
+        paths.push(img.originalPath);
+        for (const styled of img.styledImages) paths.push(styled.restyledPath);
+      }
+    }
+    if (user.avatarUrl && !user.avatarUrl.startsWith("http")) {
+      paths.push(user.avatarUrl);
+    }
+
+    if (paths.length > 0) {
+      // Best-effort — don't block account deletion on storage errors.
+      try {
+        await imagesService.deleteImages(paths);
+      } catch (err) {
+        console.error("Storage cleanup during account deletion failed:", err);
+      }
+    }
+
+    await prisma.user.delete({ where: { id: userId } });
+  }
 }
 
 export const usersService = new UsersService();

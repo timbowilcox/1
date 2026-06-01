@@ -10,6 +10,7 @@ import {
   forgotPasswordApi,
   resetPasswordApi,
   verifyEmailApi,
+  resendVerificationApi,
 } from "./auth.api";
 import { useAuthStore } from "./auth.store";
 import { useSuccessToastStore } from "@/stores/useSuccessToastStore";
@@ -119,4 +120,8 @@ export function useVerifyEmail() {
   return useMutation<{ verified: boolean }, ApiError | Error, string>({
     mutationFn: (token) => verifyEmailApi(token),
   });
+}
+
+export function useResendVerification() {
+  return useMutation({ mutationFn: resendVerificationApi });
 }

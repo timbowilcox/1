@@ -19,6 +19,15 @@ class UsersController {
       res.status(500).json({ message: "Failed to update avatar" });
     }
   };
+
+  deleteAccount = async (req: any, res: Response) => {
+    const userId = req.session.userId;
+    await usersService.deleteAccount(userId);
+    req.session.destroy(() => {
+      res.clearCookie("connect.sid");
+      res.status(204).end();
+    });
+  };
 }
 
 export const usersController = new UsersController();
