@@ -42,6 +42,9 @@ jobs:
       - name: Typecheck & build server
         run: pnpm --filter server run build
 
+      - name: Test server
+        run: pnpm --filter server run test
+
       - name: Lint client
         run: pnpm --filter client run lint
 

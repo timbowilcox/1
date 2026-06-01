@@ -20,11 +20,14 @@ class OpenaiProvider implements ImageGenerationProviderI {
   }) {
     const file = new File([buffer], "input.png", { type: mimeType });
 
-    const result = await this.openai.images.edit({
-      model: "gpt-image-1",
-      image: file,
-      prompt,
-    });
+    const result = await this.openai.images.edit(
+      {
+        model: "gpt-image-1",
+        image: file,
+        prompt,
+      },
+      { timeout: 120_000, maxRetries: 1 },
+    );
 
     const image_base64 = result.data?.[0]?.b64_json;
     if (!image_base64) throw new Error("No image returned from Openai");

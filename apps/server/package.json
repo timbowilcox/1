@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/app.ts",
     "build": "tsc",
+    "test": "vitest run",
     "start": "node dist/app.js",
     "prestart": "pnpm run build",
     "seed-users": "tsx src/lib/prisma/seed-users.ts",
@@ -61,6 +62,7 @@
     "nodemon": "^3.1.11",
     "prisma": "^7.3.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.7"
   }
 }
