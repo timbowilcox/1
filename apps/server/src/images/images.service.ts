@@ -10,6 +10,7 @@ import type {
 } from "../types/index.js";
 import { ApiError } from "shared";
 import sharp from "sharp";
+import { safeFetchBuffer } from "../lib/net-guard.js";
 
 const BUCKET = environment.SUPABASE_BUCKET_NAME;
 
@@ -73,23 +74,14 @@ class ImagesService {
     const results: UploadedImage[] = [];
 
     for (const url of urls) {
-      const response = await fetch(url);
-
-      if (!response.ok) {
-        throw new BadRequestError(`Failed to fetch image: ${url}`);
-      }
-
-      const contentType = response.headers.get("content-type");
+      // SSRF-guarded: validates scheme/host, blocks private/internal targets,
+      // follows redirects safely, enforces a timeout and the size cap.
+      const { buffer, contentType } = await safeFetchBuffer(url, {
+        maxBytes: MAX_FILE_SIZE,
+      });
 
       if (!contentType || !contentType.startsWith("image/")) {
         throw new BadRequestError("Invalid image content-type");
-      }
-
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
-      if (buffer.length > MAX_FILE_SIZE) {
-        throw new BadRequestError("File exceeds maximum size");
       }
 
       const id = uuidv4();

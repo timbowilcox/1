@@ -1,5 +1,12 @@
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
+import PlanCheckoutButton from '@/components/billing/PlanCheckoutButton';
+
+export const metadata = {
+    title: "Pricing — RealStyler",
+    description:
+        "Simple plans for AI interior restyling. Start free, upgrade for higher monthly limits and white-label client galleries.",
+};
 
 export default function PricingPage() {
     return (
@@ -55,7 +62,7 @@ export default function PricingPage() {
 
                             <ul className="space-y-4 mb-8">
                                 <li className="flex items-center gap-3 text-sm text-neutral-700">
-                                    <span className="text-[#9333EA]">✓</span> Unlimited designs
+                                    <span className="text-[#9333EA]">✓</span> Hundreds of designs / month
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-neutral-700">
                                     <span className="text-[#9333EA]">✓</span> HD / 4K Export
@@ -68,9 +75,12 @@ export default function PricingPage() {
                                 </li>
                             </ul>
 
-                            <button className="w-full py-3 bg-linear-to-r from-[#A855F7] to-[#D946EF] text-white rounded-full text-sm font-bold tracking-wide hover:shadow-lg transition-shadow">
+                            <PlanCheckoutButton
+                                plan="PRO"
+                                className="w-full py-3 bg-linear-to-r from-[#A855F7] to-[#D946EF] text-white rounded-full text-sm font-bold tracking-wide hover:shadow-lg transition-shadow disabled:opacity-60"
+                            >
                                 Go Pro
-                            </button>
+                            </PlanCheckoutButton>
                         </div>
 
                         {/* Business Feature */}
@@ -82,13 +92,13 @@ export default function PricingPage() {
 
                             <ul className="space-y-4 mb-8">
                                 <li className="flex items-center gap-3 text-sm text-neutral-600">
-                                    <span className="text-neutral-900">✓</span> Team management
+                                    <span className="text-neutral-900">✓</span> Everything in Pro
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-neutral-600">
-                                    <span className="text-neutral-900">✓</span> API Access
+                                    <span className="text-neutral-900">✓</span> Highest monthly limit
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-neutral-600">
-                                    <span className="text-neutral-900">✓</span> White-labeling
+                                    <span className="text-neutral-900">✓</span> White-label client galleries
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-neutral-600">
                                     <span className="text-neutral-900">✓</span> Dedicated support
@@ -96,9 +106,12 @@ export default function PricingPage() {
                             </ul>
 
                             <div className="text-center">
-                                <button className="text-sm font-medium text-neutral-900 hover:text-neutral-700 transition">
-                                    Contact Sales
-                                </button>
+                                <PlanCheckoutButton
+                                    plan="PRO_PLUS"
+                                    className="text-sm font-medium text-neutral-900 hover:text-neutral-700 transition disabled:opacity-60"
+                                >
+                                    Go Business
+                                </PlanCheckoutButton>
                             </div>
                         </div>
                     </div>

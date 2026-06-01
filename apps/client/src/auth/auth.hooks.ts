@@ -2,15 +2,26 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { loginApi, logoutApi, meApi, registerApi } from "./auth.api";
+import {
+  loginApi,
+  logoutApi,
+  meApi,
+  registerApi,
+  forgotPasswordApi,
+  resetPasswordApi,
+  verifyEmailApi,
+  resendVerificationApi,
+} from "./auth.api";
 import { useAuthStore } from "./auth.store";
 import { useSuccessToastStore } from "@/stores/useSuccessToastStore";
 import {
   ApiError,
+  ForgotPasswordSchema,
   LoginDTO,
   LoginSchema,
   RegisterDTO,
   RegisterSchema,
+  ResetPasswordSchema,
   zodParseOrThrow,
 } from "shared";
 import { UserDTO } from "./auth.dto";
@@ -81,4 +92,36 @@ export function useMe() {
     isLoading,
     user: data,
   };
+}
+
+export function useForgotPassword() {
+  return useMutation<{ ok: boolean }, ApiError | Error, string>({
+    mutationFn: async (email) => {
+      zodParseOrThrow(ForgotPasswordSchema, { email });
+      return forgotPasswordApi(email);
+    },
+  });
+}
+
+export function useResetPassword() {
+  return useMutation<
+    { ok: boolean },
+    ApiError | Error,
+    { token: string; password: string }
+  >({
+    mutationFn: async (data) => {
+      zodParseOrThrow(ResetPasswordSchema, data);
+      return resetPasswordApi(data);
+    },
+  });
+}
+
+export function useVerifyEmail() {
+  return useMutation<{ verified: boolean }, ApiError | Error, string>({
+    mutationFn: (token) => verifyEmailApi(token),
+  });
+}
+
+export function useResendVerification() {
+  return useMutation({ mutationFn: resendVerificationApi });
 }

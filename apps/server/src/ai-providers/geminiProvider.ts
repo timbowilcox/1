@@ -3,7 +3,11 @@ import type { ImageGenerationProviderI } from "../interfaces/imageGenerationProv
 import { environment } from "../config/environment.js";
 
 class GeminiProvider implements ImageGenerationProviderI {
-  private ai = new GoogleGenAI({ apiKey: environment.GEMINI_API_KEY });
+  // 120s request timeout so a hung provider can't stall a job indefinitely.
+  private ai = new GoogleGenAI({
+    apiKey: environment.GEMINI_API_KEY,
+    httpOptions: { timeout: 120_000 },
+  });
 
   async generateImage({
     base64Image,

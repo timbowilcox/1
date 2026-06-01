@@ -4,10 +4,10 @@ import Link from "next/link";
 import Footer from "@/components/layout/Footer";
 import { useLogin } from "@/auth/auth.hooks";
 import { useSearchParams, useRouter } from "next/navigation";
-import { SubmitEvent } from "react";
+import { Suspense, SubmitEvent } from "react";
 import { ApiError } from "shared";
 
-export default function LoginPage() {
+function LoginForm() {
   const { mutateAsync, error } = useLogin();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -41,6 +41,11 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={onSubmit} className="space-y-6">
+            {err && err.code !== "email" && err.code !== "password" && (
+              <p className="text-red-500 text-sm text-center" role="alert">
+                {err.message}
+              </p>
+            )}
             <div className="space-y-2">
               <label
                 htmlFor="email"
@@ -69,7 +74,7 @@ export default function LoginPage() {
                   Password
                 </label>
                 <Link
-                  href="#"
+                  href="/forgot-password"
                   className="text-xs text-neutral-500 hover:text-neutral-900 transition"
                 >
                   Forgot password?
@@ -109,5 +114,13 @@ export default function LoginPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

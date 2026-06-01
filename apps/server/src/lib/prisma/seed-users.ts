@@ -13,6 +13,13 @@ const PLAN_LIMITS = {
 };
 
 (async () => {
+  // Test fixtures only — weak shared password + mock subscriptions. Never prod.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "seed-users creates test accounts and must NEVER run in production.",
+    );
+  }
+
   console.log("Seed started");
 
   const hash = await bcrypt.hash("qqqqqq", 10);

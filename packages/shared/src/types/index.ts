@@ -13,6 +13,7 @@ export type JobStatus =
 export type Job<T = any> = {
   id: string;
   status: JobStatus;
+  owner?: string; // ownership key: "user:<id>" | "guest:<sessionId>" — scopes reads
   input: any; // data transferred for generation (images, prompts, etc.)
   result?: T; // generation result (URL, base64, etc.)
   error?: string;

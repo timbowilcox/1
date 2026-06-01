@@ -1,5 +1,11 @@
 import Footer from '@/components/layout/Footer';
 
+export const metadata = {
+    title: "About — RealStyler",
+    description:
+        "RealStyler helps agents and homeowners reimagine spaces with AI-powered interior design.",
+};
+
 export default function AboutPage() {
     return (
         <div className="min-h-screen bg-white">

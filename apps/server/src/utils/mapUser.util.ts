@@ -8,6 +8,7 @@ export default function mapUser(user: any): UserDTO {
     stripeCustomerId: user.stripeCustomerId,
     createdAt: user.createdAt,
     avatarUrl: user.avatarUrl || null,
+    emailVerified: !!user.emailVerified,
     creditsRemaining: user.creditsRemaining || 0,
   };
 }

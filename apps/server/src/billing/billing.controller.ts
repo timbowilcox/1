@@ -21,8 +21,10 @@ class BillingController {
 
   webhook = async (req: Request, res: Response) => {
     const sig = req.headers["stripe-signature"]!;
-    await billingWebhooks.webhookHandler(req.body.toString(), sig);
-    res.end();
+    // req.body is the raw Buffer (express.raw) — pass it through unmodified so
+    // the Stripe signature verifies against the exact bytes received.
+    await billingWebhooks.webhookHandler(req.body, sig);
+    res.json({ received: true });
   };
 }
 

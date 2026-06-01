@@ -1,6 +1,11 @@
 import Image from 'next/image';
 import Footer from '@/components/layout/Footer';
 
+export const metadata = {
+    title: "Blog — RealStyler",
+    description: "Interior design trends, tips, and product updates from RealStyler.",
+};
+
 export default function BlogPage() {
     return (
         <div className="min-h-screen bg-white">
@@ -37,7 +42,7 @@ export default function BlogPage() {
                                     Top 10 Interior Design Trends for 2025
                                 </h2>
                                 <p className="text-neutral-500 leading-relaxed">
-                                    Discover what's hot in the world of interior design next year. From sustainable materials to bold colors, see how AI is predicting the next big shift.
+                                    Discover what&apos;s hot in the world of interior design next year. From sustainable materials to bold colors, see how AI is predicting the next big shift.
                                 </p>
                             </div>
                         </div>

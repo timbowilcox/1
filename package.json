@@ -18,6 +18,9 @@
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "tsx": "^4.21.0"
   }

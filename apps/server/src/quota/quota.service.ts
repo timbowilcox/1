@@ -78,12 +78,27 @@ class QuotaService {
   async reserveQuotaAtomic(identity: RequestIdentity, count: number) {
     const usage = await this.assertQuotaAvailable(identity, count);
 
-    return prisma.usageTracking.update({
-      where: { id: usage.id },
+    // Atomic reservation: only increment if doing so stays within the limit.
+    // Concurrent requests are serialized by the DB — a racing request that
+    // would exceed the limit matches 0 rows and is rejected. (The prior
+    // read-then-write here was not actually atomic and could over-spend.)
+    const reserved = await prisma.usageTracking.updateMany({
+      where: {
+        id: usage.id,
+        imagesUsed: { lte: usage.imagesLimit - count },
+      },
       data: {
-        imagesUsed: { increment: count }, 
+        imagesUsed: { increment: count },
       },
     });
+
+    if (reserved.count === 0) {
+      throw new ForbiddenError(
+        `Quota exceeded. Available ${Math.max(0, usage.imagesLimit - usage.imagesUsed)}`,
+      );
+    }
+
+    return usage;
   }
 
   async refundQuota(id: string, count: number) {
@@ -92,6 +107,22 @@ class QuotaService {
       data: {
         imagesUsed: { decrement: count },
       },
+    });
+  }
+
+  /**
+   * Revoke paid quota — drop the caller's current period limit back to FREE.
+   * Called when a subscription is canceled / unpaid / deleted so a lapsed
+   * subscriber can't keep spending paid quota for the rest of the period.
+   * imagesUsed is left as-is (they may now be over the free cap until renewal).
+   */
+  async downgradeToFree(identity: RequestIdentity) {
+    const usage = await this.getLastUsagePeriod(identity);
+    if (!usage) return;
+
+    await prisma.usageTracking.update({
+      where: { id: usage.id },
+      data: { imagesLimit: this.getImagesLimitByPlan("FREE") },
     });
   }
 
@@ -128,7 +159,8 @@ class QuotaService {
     });
 
     if (result.count > 0) {
-      console.log(`Migrated ${result.count} quota period(s) from guest (IP: ${guestId}) to user ${userId}`);
+      // Don't log the raw guest IP (PII).
+      console.log(`Migrated ${result.count} guest quota period(s) to user ${userId}`);
     }
 
     return result.count;

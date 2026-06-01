@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, typecheck & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.13.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `shared` must build first — both apps import from its compiled dist/.
+      - name: Build shared package
+        run: pnpm --filter shared run build
+
+      # Server tsc needs the generated Prisma client types.
+      - name: Generate Prisma client
+        run: pnpm --filter server exec prisma generate
+
+      - name: Typecheck & build server
+        run: pnpm --filter server run build
+
+      - name: Test server
+        run: pnpm --filter server run test
+
+      - name: Lint client
+        run: pnpm --filter client run lint
+
+      - name: Build client
+        run: pnpm --filter client run build
+        env:
+          # Build-time only; the deployed value is injected by the host.
+          NEXT_PUBLIC_API_URL: http://localhost:4000

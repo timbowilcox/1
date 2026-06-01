@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect } from 'react';
 import { X, Clock, Star, ArrowRight, Loader2 } from 'lucide-react';
+import { useCheckout } from '@/billing/billing.hooks';
 
 interface Props {
   isOpen: boolean;
@@ -15,14 +15,8 @@ export default function UpgradeModal({
   onCancel,
   currentPlan,
 }: Props) {
-  const router = useRouter();
-  const [isNavigating, setIsNavigating] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setIsNavigating(false);
-    }
-  }, [isOpen]);
+  const { mutate, isPending } = useCheckout();
+  const isNavigating = isPending;
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -47,8 +41,10 @@ export default function UpgradeModal({
   const isMaxPlan = currentPlan === 'PRO_PLUS';
 
   const handleNavigate = () => {
-    setIsNavigating(true);
-    router.push('/pricing');
+    // Upgrade to the next tier up and go straight to Stripe Checkout.
+    const targetPlan: 'PRO' | 'PRO_PLUS' =
+      currentPlan === 'PRO' ? 'PRO_PLUS' : 'PRO';
+    mutate(targetPlan);
   };
 
   return (
@@ -105,7 +101,7 @@ export default function UpgradeModal({
                   </>
                 ) : (
                   <>
-                    View Plans
+                    Upgrade Now
                     <ArrowRight size={18} strokeWidth={2.5} />
                   </>
                 )}
