@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
+import PlanCheckoutButton from '@/components/billing/PlanCheckoutButton';
 
 export default function PricingPage() {
     return (
@@ -68,9 +69,12 @@ export default function PricingPage() {
                                 </li>
                             </ul>
 
-                            <button className="w-full py-3 bg-linear-to-r from-[#A855F7] to-[#D946EF] text-white rounded-full text-sm font-bold tracking-wide hover:shadow-lg transition-shadow">
+                            <PlanCheckoutButton
+                                plan="PRO"
+                                className="w-full py-3 bg-linear-to-r from-[#A855F7] to-[#D946EF] text-white rounded-full text-sm font-bold tracking-wide hover:shadow-lg transition-shadow disabled:opacity-60"
+                            >
                                 Go Pro
-                            </button>
+                            </PlanCheckoutButton>
                         </div>
 
                         {/* Business Feature */}
@@ -96,9 +100,12 @@ export default function PricingPage() {
                             </ul>
 
                             <div className="text-center">
-                                <button className="text-sm font-medium text-neutral-900 hover:text-neutral-700 transition">
-                                    Contact Sales
-                                </button>
+                                <PlanCheckoutButton
+                                    plan="PRO_PLUS"
+                                    className="text-sm font-medium text-neutral-900 hover:text-neutral-700 transition disabled:opacity-60"
+                                >
+                                    Go Business
+                                </PlanCheckoutButton>
                             </div>
                         </div>
                     </div>
