@@ -13,6 +13,7 @@ model User {
   passwordHash     String  @map("password_hash")
   stripeCustomerId String? @map("stripe_customer_id")
   avatarUrl        String? @map("avatar_url")
+  emailVerified    Boolean @default(false) @map("email_verified")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -21,8 +22,26 @@ model User {
   subscriptions Subscription[]
   usageTracking UsageTracking[]
   agentProfile  AgentProfile?
+  tokens        AuthToken[]
 
   @@map("users")
+}
+
+model AuthToken {
+  id        String        @id @default(uuid())
+  userId    String        @map("user_id")
+  type      AuthTokenType
+  tokenHash String        @map("token_hash") // sha256 of the raw token
+  expiresAt DateTime      @map("expires_at")
+  usedAt    DateTime?     @map("used_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("auth_tokens")
 }
 
 model AgentProfile {
@@ -222,6 +241,11 @@ enum StylePreset {
   URBAN_INDUSTRIAL
   HAMPTONS_CLASSIC
   MID_CENTURY_MODERN
+}
+
+enum AuthTokenType {
+  EMAIL_VERIFY
+  PASSWORD_RESET
 }
 
 enum PlanTier {

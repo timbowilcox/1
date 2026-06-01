@@ -10,4 +10,14 @@ authRouter.post("/auth/login", authLimiter, authController.login);
 authRouter.post("/auth/logout", authController.logout);
 authRouter.get("/auth/me", requireAuth, authController.me);
 
+authRouter.post("/auth/verify-email", authController.verifyEmail);
+authRouter.post(
+  "/auth/resend-verification",
+  requireAuth,
+  authLimiter,
+  authController.resendVerification,
+);
+authRouter.post("/auth/forgot-password", authLimiter, authController.forgotPassword);
+authRouter.post("/auth/reset-password", authLimiter, authController.resetPassword);
+
 export default authRouter;

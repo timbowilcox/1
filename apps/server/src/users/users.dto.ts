@@ -5,5 +5,6 @@ export type UserDTO = {
   id: string;
   createdAt: Date;
   avatarUrl: string | null;
+  emailVerified: boolean;
   creditsRemaining: number;
 };

@@ -39,6 +39,11 @@ const envSchema = z.object({
   // (e.g. ".yourdomain.com" for app.* + api.*). Unset = host-only cookie.
   COOKIE_DOMAIN: z.string().optional(),
 
+  // Email (Resend). If RESEND_API_KEY is unset, emails are logged to the console
+  // (dev) instead of being sent.
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default("RealStyler <onboarding@resend.dev>"),
+
   PLAN_LIMIT_FREE: z.coerce.number().min(0),
   PLAN_LIMIT_PRO: z.coerce.number().min(0),
   PLAN_LIMIT_PRO_PLUS: z.coerce.number().min(0),

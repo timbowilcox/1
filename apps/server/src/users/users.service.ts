@@ -12,6 +12,7 @@ class UsersService {
         stripeCustomerId: true,
         createdAt: true,
         avatarUrl: true,
+        emailVerified: true,
         usageTracking: {
           orderBy: { periodEnd: "desc" },
           take: 1,
