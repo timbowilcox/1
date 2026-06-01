@@ -81,7 +81,7 @@ class BillingWebhooks {
       },
     });
 
-    await quotaService.upsertPeriod(sub.userId, {
+    await quotaService.upsertPeriod({ type: "user", id: sub.userId }, {
       periodStart: currentPeriodStart,
       periodEnd: currentPeriodEnd,
       imagesLimit: quotaService.getImagesLimitByPlan(sub.planTier),
@@ -119,7 +119,7 @@ class BillingWebhooks {
       },
     });
 
-    await quotaService.upsertPeriod(sub.userId, {
+    await quotaService.upsertPeriod({ type: "user", id: sub.userId }, {
       periodStart: currentPeriodStart,
       periodEnd: currentPeriodEnd,
       imagesLimit: quotaService.getImagesLimitByPlan(sub.planTier),
@@ -182,7 +182,7 @@ class BillingWebhooks {
       },
     });
 
-    await quotaService.upsertPeriod(sub.userId, {
+    await quotaService.upsertPeriod({ type: "user", id: sub.userId }, {
       periodStart: currentPeriodStart,
       periodEnd: currentPeriodEnd,
       imagesLimit: quotaService.getImagesLimitByPlan(sub.planTier),

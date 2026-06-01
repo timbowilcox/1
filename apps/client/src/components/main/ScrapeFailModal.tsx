@@ -67,7 +67,7 @@ export default function ScrapeFailModal({
             Images Not Found
           </h2>
           <p className="text-base text-[#8e94a0] mb-8 max-w-75 leading-relaxed font-sans">
-            We couldn't extract any images from the provided URL. The site might be protected or have no compatible images.
+            We couldn&apos;t extract any images from the provided URL. The site might be protected or have no compatible images.
           </p>
 
           {/* Action Buttons */}

@@ -4,10 +4,10 @@ import Link from "next/link";
 import Footer from "@/components/layout/Footer";
 import { useLogin } from "@/auth/auth.hooks";
 import { useSearchParams, useRouter } from "next/navigation";
-import { SubmitEvent } from "react";
+import { Suspense, SubmitEvent } from "react";
 import { ApiError } from "shared";
 
-export default function LoginPage() {
+function LoginForm() {
   const { mutateAsync, error } = useLogin();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -109,5 +109,13 @@ export default function LoginPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
