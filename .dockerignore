@@ -1,0 +1,22 @@
+# Install fresh inside the image (host node_modules may have wrong-platform binaries)
+node_modules
+**/node_modules
+
+# Build outputs (regenerated in the image)
+**/dist
+**/.next
+**/out
+
+# VCS / local
+.git
+.github
+**/*.log
+
+# Secrets — provided via the host's env, never baked into the image
+**/.env
+**/.env.*
+!**/.env.example
+
+# Docs / misc not needed at build
+*.md
+.vercel

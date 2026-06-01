@@ -11,31 +11,31 @@ function jobKey(id: string) {
 // In-memory fallback when Redis is unavailable
 const memStore = new Map<string, string>();
 
-function isRedisReady(): boolean {
-  return !!redisClient?.isReady;
-}
-
 async function storeGet(key: string): Promise<string | null> {
-  if (isRedisReady()) return redisClient.get(key);
+  const client = redisClient;
+  if (client?.isReady) return client.get(key);
   return memStore.get(key) ?? null;
 }
 
 async function storeSet(key: string, value: string): Promise<void> {
-  if (isRedisReady()) {
-    await redisClient.set(key, value, { EX: JOB_TTL_SECONDS });
+  const client = redisClient;
+  if (client?.isReady) {
+    await client.set(key, value, { EX: JOB_TTL_SECONDS });
   } else {
     memStore.set(key, value);
   }
 }
 
 async function storeTtl(key: string): Promise<number> {
-  if (isRedisReady()) return redisClient.ttl(key);
+  const client = redisClient;
+  if (client?.isReady) return client.ttl(key);
   return JOB_TTL_SECONDS;
 }
 
 async function storeSetWithTtl(key: string, value: string, ttl: number): Promise<void> {
-  if (isRedisReady()) {
-    await redisClient.set(key, value, { EX: ttl > 0 ? ttl : JOB_TTL_SECONDS });
+  const client = redisClient;
+  if (client?.isReady) {
+    await client.set(key, value, { EX: ttl > 0 ? ttl : JOB_TTL_SECONDS });
   } else {
     memStore.set(key, value);
   }

@@ -7,7 +7,7 @@
     "dev": "tsx watch src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js",
-    "prestart": "npm run build",
+    "prestart": "pnpm run build",
     "seed-users": "tsx src/lib/prisma/seed-users.ts",
     "seed-styles": "tsx src/lib/prisma/seed-styles.ts",
     "seed-projects": "tsx src/lib/prisma/seed-projects.ts"
@@ -16,6 +16,9 @@
   "author": "",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@google/genai": "^1.39.0",
     "@prisma/adapter-pg": "^7.3.0",

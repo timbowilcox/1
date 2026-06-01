@@ -64,6 +64,9 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string(),
   SUPABASE_BUCKET_NAME: z.string(),
 
+  // Prefer a full connection URL (managed Redis, supports rediss:// + auth).
+  // Falls back to REDIS_HOST/REDIS_PORT for local dev.
+  REDIS_URL: z.string().optional(),
   REDIS_HOST: z.string().default("localhost"),
   REDIS_PORT: z.coerce.number().default(6379),
 });

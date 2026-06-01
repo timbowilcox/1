@@ -12,7 +12,8 @@ import { environment } from "./config/environment.js";
 import imagesRouter from "./images/images.router.js";
 import aiGenerationRouter from "./ai-generation/ai-generation.router.js";
 import authRouter from "./auth/auth.router.js";
-import initRedisStore from "./lib/redis.js";
+import initRedisStore, { redisClient, closeRedis } from "./lib/redis.js";
+import { prisma } from "./lib/prisma/index.js";
 import { stylesService } from "./styles/styles.service.js";
 import promptsRouter from "./styles/styles.router.js";
 import projectsRouter from "./projects/projects.router.js";
@@ -27,6 +28,26 @@ import quotaRouter from "./quota/quota.router.js";
   // Trust the PaaS proxy so req.ip (rate limiting, guest identity) and secure
   // cookies behave correctly behind TLS termination.
   app.set("trust proxy", environment.TRUST_PROXY);
+
+  // Health checks — cheap, unauthenticated, before any middleware.
+  app.get("/healthz", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+  app.get("/readyz", async (_req, res) => {
+    const redisReady =
+      environment.NODE_ENV !== "production" || !!redisClient?.isReady;
+    let dbReady = false;
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      dbReady = true;
+    } catch {
+      dbReady = false;
+    }
+    const ok = redisReady && dbReady;
+    res
+      .status(ok ? 200 : 503)
+      .json({ status: ok ? "ready" : "not_ready", checks: { redis: redisReady, db: dbReady } });
+  });
 
   const store = await initRedisStore(); // connect Redis or fallback
   await stylesService.loadPrompts(); // load and save prompts
@@ -83,7 +104,22 @@ import quotaRouter from "./quota/quota.router.js";
 
   app.use(errorMiddleware);
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
+
+  // Graceful shutdown: stop accepting connections, then close Redis + DB.
+  const shutdown = (signal: string) => {
+    console.log(`${signal} received — shutting down gracefully`);
+    server.close(async () => {
+      await closeRedis();
+      await prisma.$disconnect().catch(() => {});
+      process.exit(0);
+    });
+    // Force-exit if connections don't drain in time.
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 })();
