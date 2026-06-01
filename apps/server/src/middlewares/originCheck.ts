@@ -4,21 +4,31 @@ import { ForbiddenError } from "../errors/apiErrors.js";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-let allowedOrigin: string | null = null;
-function getAllowedOrigin(): string {
-  if (!allowedOrigin) allowedOrigin = new URL(environment.CLIENT_URL).origin;
-  return allowedOrigin;
+let cached: string[] | null = null;
+
+/**
+ * Browser origins allowed for CORS + the CSRF origin check. From ALLOWED_ORIGINS
+ * (comma-separated) if set, else [CLIENT_URL]. Normalised to bare origins.
+ */
+export function allowedOrigins(): string[] {
+  if (!cached) {
+    const raw = environment.ALLOWED_ORIGINS
+      ? environment.ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+      : [environment.CLIENT_URL];
+    cached = raw.map((u) => new URL(u).origin);
+  }
+  return cached;
 }
 
 /**
  * CSRF defense for a cookie-session API: state-changing requests must carry an
- * Origin (or Referer) matching the configured client origin. Browsers always
- * attach Origin to cross-site state-changing fetches, and it cannot be spoofed
- * by page JS — so this blocks classic forged cross-site requests. Combined with
- * the SameSite cookie attribute this is defense-in-depth.
+ * Origin (or Referer) matching one of the allowed origins. Browsers always
+ * attach Origin to cross-site state-changing fetches and it can't be spoofed by
+ * page JS, so this blocks classic forged cross-site requests. Combined with the
+ * SameSite cookie attribute this is defense-in-depth.
  *
- * Mounted AFTER the Stripe webhook route (which is signature-verified and has
- * no browser Origin) and applies only to unsafe methods.
+ * Mounted AFTER the Stripe webhook route (signature-verified, no browser Origin)
+ * and applies only to unsafe methods.
  */
 export function originCheck(req: Request, _res: Response, next: NextFunction) {
   if (SAFE_METHODS.has(req.method)) return next();
@@ -37,7 +47,7 @@ export function originCheck(req: Request, _res: Response, next: NextFunction) {
     }
   }
 
-  if (!source || source !== getAllowedOrigin()) {
+  if (!source || !allowedOrigins().includes(source)) {
     return next(new ForbiddenError("Cross-origin request blocked"));
   }
 

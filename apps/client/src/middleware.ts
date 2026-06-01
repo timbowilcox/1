@@ -1,31 +1,83 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Server-side guard for the (protected) route group. Checks for the session
-// cookie before render (prevents the protected-content flash and blocks
-// unauthenticated navigations); the API still enforces real authorization.
-//
-// Enforced only in production: in production the client and API share one root
-// domain so the `connect.sid` cookie is visible here. In local dev the API is a
-// different origin (cookie not visible to the Next server), so we pass through
-// and rely on the client-side guard.
+// Domain split: the apex realstyler.com is the marketing site; the app
+// ("logged-in") functionality lives on app.realstyler.com. One Next app serves
+// both — this routes by Host. Dev and *.vercel.app previews pass through
+// untouched (host-routing only fires for the two real production hosts).
+
 const SESSION_COOKIE = "connect.sid";
+const APP_HOST = "app.realstyler.com";
+const MARKETING_HOSTS = new Set(["realstyler.com", "www.realstyler.com"]);
+
+// The app surface (kept on app.realstyler.com).
+const APP_PREFIXES = [
+  "/dashboard",
+  "/projects",
+  "/create",
+  "/upload",
+  "/processing",
+  "/viewer",
+  "/styles",
+  "/history",
+  "/settings",
+];
+// Subset that requires authentication (the (protected) route group).
+const PROTECTED_PREFIXES = ["/dashboard", "/projects"];
+
+function matchesPrefix(path: string, prefixes: string[]): boolean {
+  return prefixes.some((p) => path === p || path.startsWith(p + "/"));
+}
 
 export function middleware(req: NextRequest) {
-  if (process.env.NODE_ENV !== "production") {
-    return NextResponse.next();
+  const host = (req.headers.get("host") || "").toLowerCase();
+  const path = req.nextUrl.pathname;
+
+  // 1) App routes requested on the marketing host → send to the app host.
+  if (MARKETING_HOSTS.has(host) && matchesPrefix(path, APP_PREFIXES)) {
+    const url = req.nextUrl.clone();
+    url.hostname = APP_HOST;
+    url.protocol = "https";
+    url.port = "";
+    return NextResponse.redirect(url, 307);
   }
 
-  const hasSession = req.cookies.has(SESSION_COOKIE);
-  if (hasSession) return NextResponse.next();
+  // 2) App host root → the app home.
+  if (host === APP_HOST && path === "/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/dashboard";
+    url.search = "";
+    return NextResponse.redirect(url, 307);
+  }
 
-  const url = req.nextUrl.clone();
-  url.pathname = "/login";
-  url.searchParams.set("redirect", req.nextUrl.pathname);
-  return NextResponse.redirect(url);
+  // 3) Auth guard for the (protected) group (production only — that's where the
+  //    .realstyler.com session cookie is visible to the Next server).
+  if (
+    process.env.NODE_ENV === "production" &&
+    matchesPrefix(path, PROTECTED_PREFIXES) &&
+    !req.cookies.has(SESSION_COOKIE)
+  ) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("redirect", path);
+    return NextResponse.redirect(url);
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
-  // (protected) route group URLs.
-  matcher: ["/dashboard/:path*", "/projects/:path*"],
+  matcher: [
+    "/",
+    "/dashboard/:path*",
+    "/projects/:path*",
+    "/create/:path*",
+    "/upload/:path*",
+    "/processing/:path*",
+    "/viewer/:path*",
+    "/styles/:path*",
+    "/history/:path*",
+    "/settings/:path*",
+  ],
 };

@@ -4,7 +4,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { pinoHttp } from "pino-http";
 import { globalLimiter } from "./middlewares/rateLimiters.js";
-import { originCheck } from "./middlewares/originCheck.js";
+import { originCheck, allowedOrigins } from "./middlewares/originCheck.js";
 import { logger } from "./lib/logger.js";
 import { initSentry } from "./lib/sentry.js";
 import urlScraperRouter from "./url-scraper/url-scraper.router.js";
@@ -64,7 +64,7 @@ import quotaRouter from "./quota/quota.router.js";
 
   app.use(
     cors({
-      origin: environment.CLIENT_URL,
+      origin: allowedOrigins(),
       credentials: true,
     }),
   );

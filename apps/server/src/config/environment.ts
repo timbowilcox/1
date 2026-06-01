@@ -38,6 +38,10 @@ const envSchema = z.object({
   // Optional: share the session cookie across subdomains of one root domain
   // (e.g. ".yourdomain.com" for app.* + api.*). Unset = host-only cookie.
   COOKIE_DOMAIN: z.string().optional(),
+  // Comma-separated browser origins allowed for CORS + the CSRF origin check.
+  // Defaults to [CLIENT_URL]. Set this when the marketing apex and the app
+  // subdomain both call the API (e.g. https://realstyler.com,https://app.realstyler.com).
+  ALLOWED_ORIGINS: z.string().optional(),
 
   // Email (Resend). If RESEND_API_KEY is unset, emails are logged to the console
   // (dev) instead of being sent.
