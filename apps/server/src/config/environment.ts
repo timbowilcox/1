@@ -69,7 +69,7 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string(),
   STRIPE_PRICE_ID_PRO: z.string(),
   STRIPE_PRICE_ID_PRO_PLUS: z.string(),
-  STRIPE_PORTAL_CONFIGURATION: z.string(),
+  STRIPE_PORTAL_CONFIGURATION: z.string().optional(),
 
   SUPABASE_URL: z.url(),
   SUPABASE_SERVICE_ROLE_KEY: z.string(),

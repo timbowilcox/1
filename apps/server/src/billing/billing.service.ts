@@ -70,7 +70,10 @@ class BillingService {
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: environment.CLIENT_URL,
-      configuration: environment.STRIPE_PORTAL_CONFIGURATION,
+      // Use the explicit portal config if provided, else Stripe's account default.
+      ...(environment.STRIPE_PORTAL_CONFIGURATION
+        ? { configuration: environment.STRIPE_PORTAL_CONFIGURATION }
+        : {}),
     });
 
     return { type: "portal", url: session.url };
