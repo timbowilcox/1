@@ -1,6 +1,7 @@
 'use client';
 
 import { Model } from "shared";
+import { env } from "@/lib/env";
 
 interface ModelSelectorProps {
     selectedModel: Model;
@@ -13,14 +14,18 @@ const models: { id: Model; label: string }[] = [
     { id: 'stable-diffusion', label: 'Stable Diffusion XL' },
 ];
 
+const isSandbox = env.appMode !== "production";
+
 export default function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorProps) {
     return (
         <div className="w-full max-w-md mx-auto mb-12">
             <div className="flex items-center justify-between mb-3">
                 <label className="text-sm font-medium text-zinc-900">AI Model</label>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-zinc-100 text-zinc-500">
-                    Sandbox Mode
-                </span>
+                {isSandbox && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-zinc-100 text-zinc-500">
+                        Sandbox Mode
+                    </span>
+                )}
             </div>
 
             <div className="bg-white border border-zinc-200 p-1 rounded-xl flex gap-1 shadow-sm">
@@ -38,9 +43,11 @@ export default function ModelSelector({ selectedModel, onSelectModel }: ModelSel
                     </button>
                 ))}
             </div>
-            <p className="mt-3 text-xs text-center text-zinc-400">
-                All models are currently running in limited sandbox mode.
-            </p>
+            {isSandbox && (
+                <p className="mt-3 text-xs text-center text-zinc-400">
+                    All models are currently running in limited sandbox mode.
+                </p>
+            )}
         </div>
     );
 }

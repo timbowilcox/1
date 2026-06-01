@@ -1,5 +1,11 @@
 import Footer from '@/components/layout/Footer';
 
+export const metadata = {
+    title: "FAQ — RealStyler",
+    description:
+        "Answers to common questions about RealStyler's AI interior restyling, plans, and billing.",
+};
+
 export default function FAQPage() {
     return (
         <div className="min-h-screen bg-white">

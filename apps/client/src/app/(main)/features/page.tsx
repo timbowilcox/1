@@ -1,5 +1,11 @@
 import Footer from '@/components/layout/Footer';
 
+export const metadata = {
+    title: "Features — RealStyler",
+    description:
+        "AI-powered interior restyling, curated style presets, projects & collections, and shareable client galleries.",
+};
+
 export default function FeaturesPage() {
     return (
         <div className="min-h-screen bg-white">

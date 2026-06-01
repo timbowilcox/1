@@ -1,6 +1,11 @@
 import Image from 'next/image';
 import Footer from '@/components/layout/Footer';
 
+export const metadata = {
+    title: "Blog — RealStyler",
+    description: "Interior design trends, tips, and product updates from RealStyler.",
+};
+
 export default function BlogPage() {
     return (
         <div className="min-h-screen bg-white">

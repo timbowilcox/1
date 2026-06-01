@@ -2,6 +2,12 @@ import Link from 'next/link';
 import Footer from '@/components/layout/Footer';
 import PlanCheckoutButton from '@/components/billing/PlanCheckoutButton';
 
+export const metadata = {
+    title: "Pricing — RealStyler",
+    description:
+        "Simple plans for AI interior restyling. Start free, upgrade for higher monthly limits and white-label client galleries.",
+};
+
 export default function PricingPage() {
     return (
         <div className="min-h-screen bg-white">
@@ -56,7 +62,7 @@ export default function PricingPage() {
 
                             <ul className="space-y-4 mb-8">
                                 <li className="flex items-center gap-3 text-sm text-neutral-700">
-                                    <span className="text-[#9333EA]">✓</span> Unlimited designs
+                                    <span className="text-[#9333EA]">✓</span> Hundreds of designs / month
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-neutral-700">
                                     <span className="text-[#9333EA]">✓</span> HD / 4K Export
@@ -86,13 +92,13 @@ export default function PricingPage() {
 
                             <ul className="space-y-4 mb-8">
                                 <li className="flex items-center gap-3 text-sm text-neutral-600">
-                                    <span className="text-neutral-900">✓</span> Team management
+                                    <span className="text-neutral-900">✓</span> Everything in Pro
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-neutral-600">
-                                    <span className="text-neutral-900">✓</span> API Access
+                                    <span className="text-neutral-900">✓</span> Highest monthly limit
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-neutral-600">
-                                    <span className="text-neutral-900">✓</span> White-labeling
+                                    <span className="text-neutral-900">✓</span> White-label client galleries
                                 </li>
                                 <li className="flex items-center gap-3 text-sm text-neutral-600">
                                     <span className="text-neutral-900">✓</span> Dedicated support

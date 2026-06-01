@@ -7,6 +7,7 @@ import InitUserState from "@/components/providers/InitUserState";
 import { meServer } from "./actions/auth";
 import ErrorToast from "@/components/ui/ErrorToast";
 import SuccessToast from "@/components/ui/SuccessToast";
+import { env } from "@/lib/env";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,8 +23,16 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(env.siteUrl),
   title: "RealStyler - AI Interior Design",
   description: "Transform your space with AI-powered interior design.",
+  openGraph: {
+    title: "RealStyler - AI Interior Design",
+    description: "Transform your space with AI-powered interior design.",
+    type: "website",
+    siteName: "RealStyler",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
