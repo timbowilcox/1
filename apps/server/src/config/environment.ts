@@ -44,6 +44,9 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("RealStyler <onboarding@resend.dev>"),
 
+  // Error tracking (optional). No-op if unset.
+  SENTRY_DSN: z.string().optional(),
+
   PLAN_LIMIT_FREE: z.coerce.number().min(0),
   PLAN_LIMIT_PRO: z.coerce.number().min(0),
   PLAN_LIMIT_PRO_PLUS: z.coerce.number().min(0),

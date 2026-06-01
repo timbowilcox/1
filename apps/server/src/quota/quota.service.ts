@@ -159,7 +159,8 @@ class QuotaService {
     });
 
     if (result.count > 0) {
-      console.log(`Migrated ${result.count} quota period(s) from guest (IP: ${guestId}) to user ${userId}`);
+      // Don't log the raw guest IP (PII).
+      console.log(`Migrated ${result.count} guest quota period(s) to user ${userId}`);
     }
 
     return result.count;

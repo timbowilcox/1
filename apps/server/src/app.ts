@@ -2,8 +2,11 @@ import express from "express";
 import session from "express-session";
 import cors from "cors";
 import helmet from "helmet";
+import { pinoHttp } from "pino-http";
 import { globalLimiter } from "./middlewares/rateLimiters.js";
 import { originCheck } from "./middlewares/originCheck.js";
+import { logger } from "./lib/logger.js";
+import { initSentry } from "./lib/sentry.js";
 import urlScraperRouter from "./url-scraper/url-scraper.router.js";
 import { errorMiddleware } from "./middlewares/errorMiddleware.js";
 import billingRouter from "./billing/billing.router.js";
@@ -23,6 +26,7 @@ import quotaRouter from "./quota/quota.router.js";
 
 (async () => {
   const PORT = environment.PORT;
+  initSentry();
   const app = express();
 
   // Trust the PaaS proxy so req.ip (rate limiting, guest identity) and secure
@@ -87,6 +91,9 @@ import quotaRouter from "./quota/quota.router.js";
   app.use(globalLimiter);
   app.use(originCheck);
 
+  // Structured request logging (adds a request id; redaction via the logger).
+  app.use(pinoHttp({ logger }));
+
   app.get("/", (_req, res) => {
     res.send("Hello from server");
   });
@@ -105,12 +112,12 @@ import quotaRouter from "./quota/quota.router.js";
   app.use(errorMiddleware);
 
   const server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    logger.info(`Server running on port ${PORT}`);
   });
 
   // Graceful shutdown: stop accepting connections, then close Redis + DB.
   const shutdown = (signal: string) => {
-    console.log(`${signal} received — shutting down gracefully`);
+    logger.info(`${signal} received — shutting down gracefully`);
     server.close(async () => {
       await closeRedis();
       await prisma.$disconnect().catch(() => {});
