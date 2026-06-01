@@ -41,6 +41,11 @@ function LoginForm() {
           </div>
 
           <form onSubmit={onSubmit} className="space-y-6">
+            {err && err.code !== "email" && err.code !== "password" && (
+              <p className="text-red-500 text-sm text-center" role="alert">
+                {err.message}
+              </p>
+            )}
             <div className="space-y-2">
               <label
                 htmlFor="email"
