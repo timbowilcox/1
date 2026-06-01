@@ -26,6 +26,7 @@ class StableDiffusionProvider implements ImageGenerationProviderI {
       {
         validateStatus: () => true,
         responseType: "arraybuffer",
+        timeout: 120_000,
         headers: {
           Authorization: `Bearer ${environment.SD_API_KEY}`,
           Accept: "image/*",
@@ -34,10 +35,14 @@ class StableDiffusionProvider implements ImageGenerationProviderI {
     );
 
     if (response.status === 200) {
-      return Buffer.from(response.data, "base64");
+      // responseType "arraybuffer" + Accept image/* → response.data is already
+      // the raw PNG bytes. (The previous Buffer.from(data, "base64") decoded the
+      // binary as base64, producing a corrupt image.)
+      return Buffer.from(response.data);
     } else {
-      console.error(response.data.toString());
-      throw new Error(`${response.status}: ${response.data.toString()}`);
+      const message = Buffer.from(response.data).toString("utf-8");
+      console.error(message);
+      throw new Error(`${response.status}: ${message}`);
     }
   }
 }

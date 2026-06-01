@@ -36,9 +36,11 @@ const envSchema = z.object({
   PLAN_LIMIT_FREE: z.coerce.number().min(0),
   PLAN_LIMIT_PRO: z.coerce.number().min(0),
   PLAN_LIMIT_PRO_PLUS: z.coerce.number().min(0),
+  // Rolling free-quota window (renewed lazily on expiry). Must be a real
+  // cadence — the old "1m" default was 1 MINUTE, which expired mid-session.
   FREE_PERIOD: z
     .custom<StringValue>()
-    .default("1m")
+    .default("30d")
     .refine((v) => typeof ms(v) === "number", {
       message: "Invalid duration format",
     }),

@@ -5,151 +5,147 @@ import { stripe } from "../lib/stripe.js";
 import { mapStripeStatus } from "../utils/mapStripeStatus.util.js";
 import { PRICE_TO_TIER } from "./billing.schemas.js";
 import { quotaService } from "../quota/quota.service.js";
+import { BadRequestError } from "../errors/apiErrors.js";
+import type { SubscriptionStatus } from "@prisma/client";
+
+// Statuses that retain paid access. PAST_DUE is included to give a grace
+// window while Stripe retries the failed payment; access is revoked once the
+// subscription transitions to UNPAID / CANCELED (or is deleted).
+const PAID_STATUSES = new Set<SubscriptionStatus>(["ACTIVE", "TRIALING", "PAST_DUE"]);
 
 class BillingWebhooks {
-  async webhookHandler(payload: string, header: string | string[]) {
-    const event = stripe.webhooks.constructEvent(
-      payload,
-      header,
-      environment.STRIPE_WEBHOOK_SECRET,
-    );
+  async webhookHandler(payload: string | Buffer, header: string | string[]) {
+    let event: Stripe.Event;
+    try {
+      event = stripe.webhooks.constructEvent(
+        payload,
+        header,
+        environment.STRIPE_WEBHOOK_SECRET,
+      );
+    } catch {
+      // Invalid signature → 400 so Stripe does not retry forever.
+      throw new BadRequestError("Invalid Stripe webhook signature");
+    }
 
-    console.log("EVENT", event.type);
+    console.log("Stripe event:", event.type, event.id);
 
     switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object;
+        if (session.mode === "subscription" && session.subscription) {
+          const subId =
+            typeof session.subscription === "string"
+              ? session.subscription
+              : session.subscription.id;
+          const subscription = await stripe.subscriptions.retrieve(subId, {
+            expand: ["items.data.price"],
+          });
+          await this.syncSubscription(subscription);
+        }
+        break;
+      }
+
       case "customer.subscription.created":
-        await this.handleSubscriptionCreated(event);
-        break;
-
       case "customer.subscription.updated":
-        await this.handleSubscriptionUpdated(event);
-        break;
-
       case "customer.subscription.deleted":
-        await this.handleSubscriptionDeleted(event);
+        await this.syncSubscription(event.data.object);
         break;
 
       case "invoice.paid":
-        await this.handleInvoicePaid(event);
-        break;
-
       case "invoice.payment_failed":
-        await this.handleInvoicePaymentFailed(event);
+        await this.handleInvoiceEvent(event.data.object);
         break;
     }
   }
 
-  private async handleSubscriptionCreated(
-    event: Stripe.CustomerSubscriptionCreatedEvent,
-  ) {
-    const subscription = event.data.object;
-    const item = subscription.items.data[0]!;
+  /** metadata.userId (set at checkout) → fallback to Stripe customer id lookup. */
+  private async resolveUserId(
+    subscription: Stripe.Subscription,
+  ): Promise<string | null> {
+    const metaUserId = subscription.metadata?.userId;
+    if (metaUserId) {
+      const user = await prisma.user.findUnique({
+        where: { id: metaUserId },
+        select: { id: true },
+      });
+      if (user) return user.id;
+    }
+
+    const customerId =
+      typeof subscription.customer === "string"
+        ? subscription.customer
+        : subscription.customer?.id;
+    if (customerId) {
+      const user = await prisma.user.findFirst({
+        where: { stripeCustomerId: customerId },
+        select: { id: true },
+      });
+      if (user) return user.id;
+    }
+
+    return null;
+  }
+
+  /**
+   * Single source of truth: reconcile the DB Subscription + quota to the
+   * current Stripe subscription state. Idempotent (upsert by subscription id),
+   * so redelivered / overlapping events converge rather than corrupt state.
+   */
+  private async syncSubscription(subscription: Stripe.Subscription) {
+    const item = subscription.items.data[0];
+    if (!item) {
+      console.error(`Item not found from subscription ${subscription.id}`);
+      return;
+    }
 
     const planTier = PRICE_TO_TIER[item.price.id];
     if (!planTier) {
-      console.error("Unknown plan tier");
+      console.error("Unknown plan tier for price", item.price.id);
       return;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: subscription.metadata!.userId },
-    });
-
-    if (!user) {
-      console.error("User not found");
+    const userId = await this.resolveUserId(subscription);
+    if (!userId) {
+      console.error("No user found for subscription", subscription.id);
       return;
     }
 
+    const status = mapStripeStatus(subscription.status);
     const currentPeriodStart = new Date(item.current_period_start * 1000);
     const currentPeriodEnd = new Date(item.current_period_end * 1000);
 
-    const sub = await prisma.subscription.upsert({
+    await prisma.subscription.upsert({
       where: { stripeSubscriptionId: subscription.id },
       create: {
-        userId: user.id,
+        userId,
         stripeSubscriptionId: subscription.id,
         planTier,
-        status: mapStripeStatus(subscription.status),
+        status,
         currentPeriodStart,
         currentPeriodEnd,
       },
-      update: {
-        planTier,
-        status: mapStripeStatus(subscription.status),
-        currentPeriodStart,
-        currentPeriodEnd,
-      },
+      update: { planTier, status, currentPeriodStart, currentPeriodEnd },
     });
 
-    await quotaService.upsertPeriod({ type: "user", id: sub.userId }, {
-      periodStart: currentPeriodStart,
-      periodEnd: currentPeriodEnd,
-      imagesLimit: quotaService.getImagesLimitByPlan(sub.planTier),
-    });
-  }
+    const identity = { type: "user", id: userId } as const;
 
-  private async handleSubscriptionUpdated(
-    event: Stripe.CustomerSubscriptionUpdatedEvent,
-  ) {
-    const subscription = event.data.object;
-
-    const item = subscription.items.data[0];
-    if (!item) {
-      console.error(`Item not found from subscription ${subscription.id}`);
-      return;
+    if (PAID_STATUSES.has(status)) {
+      await quotaService.upsertPeriod(identity, {
+        periodStart: currentPeriodStart,
+        periodEnd: currentPeriodEnd,
+        imagesLimit: quotaService.getImagesLimitByPlan(planTier),
+      });
+    } else {
+      // CANCELED / UNPAID / INCOMPLETE(_EXPIRED) / PAUSED → revoke paid quota.
+      await quotaService.downgradeToFree(identity);
     }
-
-    const priceId = item.price.id;
-    const planTier = PRICE_TO_TIER[priceId];
-    if (!planTier) {
-      console.error("Unknown plan tier");
-      return;
-    }
-
-    const currentPeriodStart = new Date(item.current_period_start * 1000);
-    const currentPeriodEnd = new Date(item.current_period_end * 1000);
-
-    const sub = await prisma.subscription.update({
-      where: { stripeSubscriptionId: subscription.id },
-      data: {
-        planTier,
-        status: mapStripeStatus(subscription.status),
-        currentPeriodStart,
-        currentPeriodEnd,
-      },
-    });
-
-    await quotaService.upsertPeriod({ type: "user", id: sub.userId }, {
-      periodStart: currentPeriodStart,
-      periodEnd: currentPeriodEnd,
-      imagesLimit: quotaService.getImagesLimitByPlan(sub.planTier),
-    });
-
-    console.log("Subscription updated:", subscription.id, planTier);
   }
 
-  private async handleSubscriptionDeleted(
-    event: Stripe.CustomerSubscriptionDeletedEvent,
-  ) {
-    const subscription = event.data.object;
-
-    await prisma.subscription.update({
-      where: { stripeSubscriptionId: subscription.id },
-      data: {
-        status: mapStripeStatus(subscription.status),
-      },
-    });
-
-    console.log("Subscription canceled:", subscription.id);
-  }
-
-  private async handleInvoicePaid(event: Stripe.InvoicePaidEvent) {
-    const invoice = event.data.object;
-
+  private async handleInvoiceEvent(invoice: Stripe.Invoice) {
     const subscriptionId = invoice.parent?.subscription_details
-      ?.subscription as string;
+      ?.subscription as string | undefined;
     if (!subscriptionId) {
-      console.log(`${event.type} without subscription`);
+      console.log("Invoice event without subscription");
       return;
     }
 
@@ -157,85 +153,7 @@ class BillingWebhooks {
       expand: ["items.data.price"],
     });
 
-    const item = subscription.items.data[0];
-    if (!item) {
-      console.error(`Item not found from subscription ${subscription.id}`);
-      return;
-    }
-
-    const planTier = PRICE_TO_TIER[item.price.id];
-    if (!planTier) {
-      console.error("Unknown plan tier");
-      return;
-    }
-
-    const currentPeriodStart = new Date(item.current_period_start * 1000);
-    const currentPeriodEnd = new Date(item.current_period_end * 1000);
-
-    const sub = await prisma.subscription.update({
-      where: { stripeSubscriptionId: subscriptionId },
-      data: {
-        status: mapStripeStatus(subscription.status),
-        currentPeriodStart,
-        currentPeriodEnd,
-        planTier,
-      },
-    });
-
-    await quotaService.upsertPeriod({ type: "user", id: sub.userId }, {
-      periodStart: currentPeriodStart,
-      periodEnd: currentPeriodEnd,
-      imagesLimit: quotaService.getImagesLimitByPlan(sub.planTier),
-    });
-
-    console.log("Payment success:", subscriptionId);
-  }
-
-  private async handleInvoicePaymentFailed(
-    event: Stripe.InvoicePaymentFailedEvent,
-  ) {
-    const invoice = event.data.object;
-
-    const subscriptionId = invoice.parent?.subscription_details
-      ?.subscription as string;
-    if (!subscriptionId) {
-      console.log(`${event.type} without subscription`);
-      return;
-    }
-
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
-      expand: ["items.data.price"],
-    });
-
-    const item = subscription.items.data[0];
-    if (!item) {
-      console.error(`Item not found from subscription ${subscription.id}`);
-      return;
-    }
-
-    const planTier = PRICE_TO_TIER[item.price.id];
-
-    const periodStart = item.current_period_start;
-    const periodEnd = item.current_period_end;
-
-    await prisma.subscription.update({
-      where: { stripeSubscriptionId: subscriptionId },
-      data: {
-        status: "PAST_DUE",
-        currentPeriodStart: new Date(periodStart * 1000),
-        currentPeriodEnd: new Date(periodEnd * 1000),
-        planTier,
-      },
-    });
-
-    console.log("Payment FAILED:", {
-      subscriptionId,
-      customer: invoice.customer,
-      attempt_count: invoice.attempt_count,
-      next_payment_attempt: invoice.next_payment_attempt,
-    });
-
-    // TODO: restrict access | send email
+    await this.syncSubscription(subscription);
   }
 }
 
