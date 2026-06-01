@@ -168,6 +168,14 @@ model UsageTracking {
   @@map("usage_tracking")
 }
 
+model WebhookEvent {
+  id          String   @id // Stripe event id — dedupe key for idempotency
+  type        String
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("webhook_events")
+}
+
 model Style {
   preset       StylePreset @id
   displayName  String      @map("display_name")

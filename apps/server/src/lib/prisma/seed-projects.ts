@@ -58,6 +58,13 @@ const getRandomElements = <T>(arr: T[], count: number): T[] => {
 };
 
 (async () => {
+  // Test fixtures attached to the seed test users — never prod.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "seed-projects creates test fixtures and must NEVER run in production.",
+    );
+  }
+
   console.log("🌱 Seed for projects started");
 
   const usersConfig = [

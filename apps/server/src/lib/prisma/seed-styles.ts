@@ -214,13 +214,23 @@ const rawStyles = [
     }
   }
 
-  await prisma.style.deleteMany({});
-
+  // Idempotent upsert — the style catalog is production data; never wipe it
+  // (the previous deleteMany({}) erased the whole catalog on every run).
   if (processedStyles.length > 0) {
-    await prisma.style.createMany({
-      data: processedStyles,
-    });
-    console.log(`Successfully seeded ${processedStyles.length} styles to the database.`);
+    for (const s of processedStyles) {
+      await prisma.style.upsert({
+        where: { preset: s.preset },
+        create: s,
+        update: {
+          displayName: s.displayName,
+          description: s.description,
+          colorPalette: s.colorPalette,
+          content: s.content,
+          imageUrl: s.imageUrl,
+        },
+      });
+    }
+    console.log(`Successfully upserted ${processedStyles.length} styles to the database.`);
   } else {
     console.log("No styles were processed successfully.");
   }

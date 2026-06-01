@@ -31,6 +31,9 @@ const envSchema = z.object({
   // cookies behind TLS termination.
   TRUST_PROXY: z.coerce.number().default(1),
   DATABASE_URL: z.string(),
+  // Direct (non-pooler) connection for `prisma migrate deploy`. Optional at
+  // runtime; required by the migration step in production.
+  DIRECT_URL: z.string().optional(),
   CLIENT_URL: z.url(),
   // Optional: share the session cookie across subdomains of one root domain
   // (e.g. ".yourdomain.com" for app.* + api.*). Unset = host-only cookie.

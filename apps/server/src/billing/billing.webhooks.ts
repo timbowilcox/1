@@ -27,6 +27,31 @@ class BillingWebhooks {
       throw new BadRequestError("Invalid Stripe webhook signature");
     }
 
+    // Idempotency: process each event id once. Record before processing and
+    // roll back the marker on failure so Stripe's retry can reprocess.
+    try {
+      await prisma.webhookEvent.create({
+        data: { id: event.id, type: event.type },
+      });
+    } catch (err: any) {
+      if (err?.code === "P2002") {
+        console.log("Duplicate Stripe event ignored:", event.id);
+        return;
+      }
+      throw err;
+    }
+
+    try {
+      await this.dispatch(event);
+    } catch (err) {
+      await prisma.webhookEvent
+        .delete({ where: { id: event.id } })
+        .catch(() => {});
+      throw err;
+    }
+  }
+
+  private async dispatch(event: Stripe.Event) {
     console.log("Stripe event:", event.type, event.id);
 
     switch (event.type) {
